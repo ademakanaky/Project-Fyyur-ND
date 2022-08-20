@@ -1,8 +1,8 @@
 {% extends 'layouts/main.html' %}
 {% block title %}Fyyur | Venues{% endblock %}
 {% block content %}
+{% if areas %}
 {% for area in areas %}
-{% if area %}
 <h3>{{ area.city }}, {{ area.state }}</h3>
 	<ul class="items">
 		{% for venue in area.venues %}
@@ -16,8 +16,13 @@
 		</li>
 		{% endfor %}
 	</ul>
+{% endfor %}
 {% else %}
 <p>No Venues to display at the moment. Please check back later.</p>
 {% endif %}
-{% endfor %}
 {% endblock %}
+
+
+<!-- <a href="/venues/{{ venue.id }}">
+	<button class="btn btn-danger btn-lg">Delete</button>
+</a> -->

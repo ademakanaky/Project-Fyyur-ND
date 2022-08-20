@@ -57,6 +57,7 @@
                 (request.endpoint == 'search_venues') or
                 (request.endpoint == 'show_venue') %}
               <form class="search" method="post" action="/venues/search">
+                <input type="hidden" name="csrf_token" value="{{csrf_token()}}"/>
                 <input class="form-control"
                   type="search"
                   name="search_term"
@@ -68,6 +69,7 @@
                 (request.endpoint == 'search_artists') or
                 (request.endpoint == 'show_artist') %}
               <form class="search" method="post" action="/artists/search">
+                <input type="hidden" name="csrf_token" value="{{csrf_token()}}"/>
                 <input class="form-control"
                   type="search"
                   name="search_term"
@@ -117,6 +119,27 @@
   <script>window.jQuery || document.write('<script type="text/javascript" src="/static/js/libs/jquery-1.11.1.min.js"><\/script>')</script>
   <script type="text/javascript" src="/static/js/libs/bootstrap-3.1.1.min.js" defer></script>
   <script type="text/javascript" src="/static/js/plugins.js" defer></script>
+
+  <script>
+      const deleteVenueBtn = document.getElementById('delete-venue');
+      let csrf = "{{ csrf_token() }}";
+      if(deleteVenueBtn){
+            deleteVenueBtn.onclick = function(e) {
+          e.preventDefault();
+          const venueId = e.target.dataset['id'];
+          fetch('/venues/' + venueId, {
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-TOKEN': csrf
+            },
+            method: 'DELETE'
+          })
+          .then(function() {
+            window.location = "/";
+          })
+        }
+      }
+  </script>
 
 </body>
 </html>
