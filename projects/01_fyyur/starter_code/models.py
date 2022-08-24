@@ -1,16 +1,9 @@
-from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-import collections
-collections.Callable = collections.abc.Callable
+from sqlalchemy import exc, and_, UniqueConstraint, distinct
+import dateutil.parser
+from datetime import datetime
 
-
-app = Flask(__name__)
-app.config.from_object('config')
-db = SQLAlchemy(app)
-
-# TODO: connect to a local postgresql database
-migrate = Migrate(app,db)
+db = SQLAlchemy()
 
 #----------------------------------------------------------------------------#
 # Models.
@@ -33,21 +26,77 @@ class Venue(db.Model):
     website = db.Column(db.String,nullable=False)
     seeking_talent = db.Column(db.Boolean, default=False,nullable=False)
     seeking_description = db.Column(db.String(120), nullable=True)
+    UniqueConstraint('name', 'city', 'state', 'address', name='unique_name_city_state_address')
 
-    def __repr__(self):
-        return f'<Venue name={self.name}, city={self.city}, state={self.state}, address={self.address}, past_shows_count={self.past_shows_count}, upcoming_shows_count={self.upcoming_shows_count}>'
-
-    def __init__(self, name, city, state, address, phone, facebook_link, genres, website, seeking_talent, seeking_description):
+    def __init__(self, name, city, state, address, phone, image_link, facebook_link, genres, website, seeking_talent, seeking_description):
         self.name = name
         self.city = city
         self.state = state
         self.address = address
         self.phone = phone
         self.facebook_link = facebook_link
+        self.image_link = image_link
         self.genres = genres
         self.website = website
         self.seeking_talent = seeking_talent
         self.seeking_description = seeking_description
+
+    @property
+    def past_shows(self):
+        past_shows = list(
+            filter(lambda show: show.start_time < datetime.now(), self.shows))
+        return [
+            {
+                'venue_id': show.venue.id,
+                'venue_name': show.venue.name,
+                'venue_image_link': show.venue.image_link,
+                'start_time': show.start_time.isoformat()
+            } for show in past_shows]
+
+    @property
+    def upcoming_shows(self):
+        upcoming_shows = list(
+            filter(lambda show: show.start_time > datetime.now(), self.shows))
+        return [
+            {
+                'venue_id': show.venue.id,
+                'venue_name': show.venue.name,
+                'venue_image_link': show.venue.image_link,
+                'start_time': show.start_time.isoformat()
+            } for show in upcoming_shows]
+
+    @property
+    def past_shows_count(self):
+        return len(self.past_shows)
+
+    @property
+    def upcoming_shows_count(self):
+        return len(self.past_shows)
+    
+    def format(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'genres': self.genres.split(', '),
+            'city': self.city,
+            'state': self.state,
+            'phone': self.phone,
+            'website': self.website,
+            'facebook_link': self.facebook_link,
+            'seeking_venue': self.seeking_venue,
+            'seeking_description': self.seeking_description,
+            'image_link': self.image_link,
+            'past_shows': self.past_shows,
+            'upcoming_shows': self.upcoming_shows,
+            'past_shows_count': self.past_shows_count,
+            'upcoming_shows_count': self.upcoming_shows_count
+        }
+
+    def __repr__(self):
+        return f'<Artist name={self.name}, city={self.city}, state={self.state}, genres={self.genres}, past_shows_count={self.past_shows_count}, upcoming_shows_count={self.upcoming_shows_count}>'
+    
+    def __getitem__(self, key):
+        return getattr(self, key)
 
 class Artist(db.Model):
     __tablename__ = 'artists'
@@ -69,13 +118,17 @@ class Artist(db.Model):
     def __repr__(self):
         return f'<Artist name={self.name}, city={self.city}, state={self.state}, genres={self.genres}, past_shows_count={self.past_shows_count}, upcoming_shows_count={self.upcoming_shows_count}>'
 
-    def __init__(self, name, genres, city, state, phone, facebook_link):
+    def __init__(self, name, genres, city, state, phone, facebook_link, image_link, website_link,seeking_venue,seeking_description):
         self.name = name
         self.genres = genres
         self.city = city
         self.state = state
         self.phone = phone
         self.facebook_link = facebook_link
+        self.image_link = image_link
+        self.website = website_link
+        self.seeking_venue = seeking_venue
+        self.seeking_description = seeking_description
 
 # TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
 
@@ -83,8 +136,8 @@ class Show(db.Model):
     __tablename__ = 'shows'
 
     id = db.Column(db.Integer, primary_key=True)
-    venue_id = db.Column(db.Integer, db.ForeignKey('venue.id'), nullable=False)
-    artist_id = db.Column(db.Integer, db.ForeignKey('artist.id'), nullable=False)
+    venue_id = db.Column(db.Integer, db.ForeignKey('venues.id'), nullable=False)
+    artist_id = db.Column(db.Integer, db.ForeignKey('artists.id'), nullable=False)
     start_time = db.Column(db.DateTime, nullable=False)
     venue = db.relationship('Venue', backref='shows', lazy=True)
     artist = db.relationship('Artist', backref='shows', lazy=True)
