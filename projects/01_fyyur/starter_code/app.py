@@ -156,7 +156,7 @@ def create_venue_submission():
                   facebook_link=form_data.facebook_link.data,
                   image_link = form_data.image_link.data,
                   genres=', '.join(form_data.genres.data),
-                  website = form_data.website_link.data,
+                  website = form_data.website.data,
                   seeking_talent = form_data.seeking_talent.data,
                   seeking_description = form_data.seeking_description.data
               )
