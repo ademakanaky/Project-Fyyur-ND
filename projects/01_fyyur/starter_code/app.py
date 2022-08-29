@@ -6,7 +6,18 @@ from email.policy import default
 import json
 import dateutil.parser
 import babel
-from flask import Flask, render_template, request, Response, flash, redirect, url_for, abort,jsonify, make_response
+from flask import (
+  Flask, 
+  render_template, 
+  request, 
+  Response, 
+  flash, 
+  redirect, 
+  url_for, 
+  abort,
+  jsonify, 
+  make_response
+)
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 import logging
@@ -30,7 +41,6 @@ app = Flask(__name__)
 moment = Moment(app)
 app.config.from_object('config')
 db.init_app(app)
-db.create_all(app=app)
 
 # TODO: connect to a local postgresql database
 migrate = Migrate(app,db)
@@ -72,6 +82,7 @@ def venues():
   #       num_upcoming_shows should be aggregated based on number of upcoming shows per venue.
 
   data = []
+  shows = []
   distinct_city_state = Venue.query.with_entities(Venue.city, Venue.state).distinct().all()  
   for city_state in distinct_city_state:
     city = city_state[0]
@@ -135,53 +146,41 @@ def create_venue_form():
 @app.route('/venues/create', methods=['POST'])
 def create_venue_submission():
   # TODO: insert form data as a new Venue record in the db, instead
-  form_data = VenueForm(request.form)
+  form = VenueForm(request.form, meta={'csrf': False})
   # TODO: modify data to be the data object returned from db insertion
-  if not form_data.validate():
-        error_message = 'There are one or more errors in your submission. Please check your input and try again.'
-  else:
+  if form.validate():
       try:
-          venue = form_data.name.data
-          venue_exists = db.session.query(Venue.id).filter_by(name=venue).scalar() is not None
+          venue = Venue(
+            name=form.name.data,
+            city=form.city.data,
+            state=form.state.data,
+            address=form.address.data,
+            phone=form.phone.data,
+            facebook_link=form.facebook_link.data,
+            image_link = form.image_link.data,
+            genres=form.genres.data,
+            website = form.website.data,
+            seeking_talent = form.seeking_talent.data,
+            seeking_description = form.seeking_description.data
+          )
 
-          if venue_exists:
-              error_message = f'{venue} is already exist! Please change the name and try again.'
-          else:
-              newly_created_venue = Venue(
-                  name=venue,
-                  city=form_data.city.data,
-                  state=form_data.state.data,
-                  address=form_data.address.data,
-                  phone=form_data.phone.data,
-                  facebook_link=form_data.facebook_link.data,
-                  image_link = form_data.image_link.data,
-                  genres=', '.join(form_data.genres.data),
-                  website = form_data.website.data,
-                  seeking_talent = form_data.seeking_talent.data,
-                  seeking_description = form_data.seeking_description.data
-              )
-              db.session.add(newly_created_venue)
-              db.session.commit()
-              # on successful db insert, flash success
-              venue_id = newly_created_venue.id
-              flash(
-                  f'{venue} was successfully created!', 'success')
-              
-              return redirect(url_for('show_venue', venue_id=venue_id))
-
-      except exc.SQLAlchemyError as error:
-          logger.exception(error, exc_info=True)
-          error_message = f'An error occurred. Venue {venue} could not be created.'
+          db.session.add(venue)
+          db.session.commit()
+          venue_id = venue.id
+          flash(f'{form.name.data} was successfully created!', 'success')
+          return redirect(url_for('show_venue', venue_id=venue_id))
+      except ValueError as e:
+          print(e)
           db.session.rollback()
+          flash(f'An error occurred. Venue {form.name.data} could not be created.')
       finally:
           db.session.close()
-
-  # TODO: on unsuccessful db insert, flash an error instead.
-  # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
-  # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
-  if error_message is not None:
-        flash(error_message, 'danger')
-  return render_template('pages/home.html')
+  else:
+      message = []
+      for field, err in form.errors.items():
+          message.append(field + ' ' + '|'.join(err))
+      flash('Errors ' + str(message))
+      return render_template('pages/home.html')
 
 @app.route('/venues/<venue_id>', methods=['DELETE'])
 def delete_venue(venue_id):
@@ -365,7 +364,7 @@ def create_artist_submission():
                   phone=form_data.phone.data,
                   facebook_link=form_data.facebook_link.data,
                   image_link = form_data.image_link.data,
-                  genres=', '.join(form_data.genres.data),
+                  genres=form_data.genres.data,
                   website_link = form_data.website.data,
                   seeking_venue = form_data.seeking_venue.data,
                   seeking_description = form_data.seeking_description.data

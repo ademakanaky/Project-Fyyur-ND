@@ -1,24 +1,11 @@
 from datetime import datetime
-from flask_wtf import Form
+from flask_wtf import FlaskForm as Form
 from wtforms import StringField, SelectField, SelectMultipleField, DateTimeField, BooleanField
-from wtforms.validators import DataRequired, AnyOf, URL
+from wtforms.validators import DataRequired, AnyOf, URL, Regexp
 import enum
 import re
 from wtforms import ValidationError
 
-# def validate(self):
-#     rv = Form.validate(self)
-#     if not rv:
-#             return False
-#     if self.state.data not in dict(State.choices()).keys():
-#         self.state.errors.append('Invalid state.')
-#         return False
-
-# def validate_phone(self, phone):
-#     ng_phone_number_format = '^([0-9]{4})[-][0-9]{3}[-][0-9]{4}$'
-#     match = re.search(ng_phone_number_format, phone.data)
-#     if not match:
-#         raise ValidationError('Error, phone number must be in format xxxx-xxx-xxxx')
 
 class Genre(enum.Enum):
     Alternative = 'Alternative'
@@ -44,12 +31,6 @@ class Genre(enum.Enum):
     @classmethod
     def choices(cls):
           return [(choice.name, choice.value) for choice in cls]
-    # @classmethod
-    # def coerce(cls, item):
-    #     return cls(int(item)) if not isinstance(item, cls) else item
-    
-    # def __str__(self):
-    #     return str(self.value)
 
 class State(enum.Enum):
     AL = 'AL'
@@ -107,11 +88,6 @@ class State(enum.Enum):
     @classmethod
     def choices(cls):
         return [(choice.name, choice.value) for choice in cls]
-    # @classmethod
-    # def coerce(cls, item):
-    #     return cls(int(item)) if not isinstance(item, cls) else item
-    # def __str__(self):
-    #     return str(self.value)
 
 class ShowForm(Form):
     artist_id = StringField(
@@ -142,7 +118,10 @@ class VenueForm(Form):
         'address', validators=[DataRequired()]
     )
     phone = StringField(
-        'phone', validators=[DataRequired()]
+        'phone', validators=[DataRequired(), Regexp(
+            regex=r"^\d{4}[-]{1}\d{3}[-]{1}\d{4}$",
+            message="Valid phone number format is xxxx-xxx-xxxx"
+        )]
     )
     image_link = StringField(
         'image_link', validators=[URL()]
@@ -151,30 +130,9 @@ class VenueForm(Form):
         # TODO implement enum restriction
         'genres', 
         validators=[DataRequired()], 
-        choices=Genre.choices
+        choices=Genre.choices()
     )
-    #     choices=[
-    #         ('Alternative', 'Alternative'),
-    #         ('Blues', 'Blues'),
-    #         ('Classical', 'Classical'),
-    #         ('Country', 'Country'),
-    #         ('Electronic', 'Electronic'),
-    #         ('Folk', 'Folk'),
-    #         ('Funk', 'Funk'),
-    #         ('Hip-Hop', 'Hip-Hop'),
-    #         ('Heavy Metal', 'Heavy Metal'),
-    #         ('Instrumental', 'Instrumental'),
-    #         ('Jazz', 'Jazz'),
-    #         ('Musical Theatre', 'Musical Theatre'),
-    #         ('Pop', 'Pop'),
-    #         ('Punk', 'Punk'),
-    #         ('R&B', 'R&B'),
-    #         ('Reggae', 'Reggae'),
-    #         ('Rock n Roll', 'Rock n Roll'),
-    #         ('Soul', 'Soul'),
-    #         ('Other', 'Other'),
-    #     ]
-    # )
+    
     facebook_link = StringField(
         'facebook_link', validators=[URL()]
     )
@@ -188,6 +146,21 @@ class VenueForm(Form):
         'seeking_description'
     )
 
+    def validate(self):
+        rv = Form.validate(self)
+        if not rv:
+            return False
+        # if not validate_phone(self.phone.data):
+        #     self.phone.errors.append('Invalid phone.')
+        #     return False
+        if not set(self.genres.data).issubset(dict(Genre.choices()).keys()):
+            self.genres.errors.append('Invalid genres.')
+            return False
+        if self.state.data not in dict(State.choices()).keys():
+            self.state.errors.append('Invalid state.')
+            return False
+        # if pass validation
+        return True
 
 
 class ArtistForm(Form):
@@ -199,18 +172,21 @@ class ArtistForm(Form):
     )
     state = SelectField(
         'state', validators=[DataRequired()],
-        choices=State.choices
+        choices=State.choices()
     )
     phone = StringField(
         # TODO implement validation logic for phone 
-        'phone', validators=[DataRequired()],
+        'phone', validators=[DataRequired(), Regexp(
+            regex=r"^\d{4}[-]{1}\d{3}[-]{1}\d{4}$",
+            message="Valid phone number format is xxxx-xxx-xxxx"
+        )],
     )
     image_link = StringField(
         'image_link'
     )
     genres = SelectMultipleField(
         'genres', validators=[DataRequired()],
-        choices=Genre.choices
+        choices=Genre.choices()
      )
     facebook_link = StringField(
         # TODO implement enum restriction
@@ -218,7 +194,7 @@ class ArtistForm(Form):
      )
 
     website = StringField(
-        'website'
+        'website', validators=[URL()]
      )
 
     seeking_venue = BooleanField( 'seeking_venue' )
@@ -226,4 +202,20 @@ class ArtistForm(Form):
     seeking_description = StringField(
             'seeking_description'
      )
+
+    def validate(self):
+        rv = Form.validate(self)
+        if not rv:
+            return False
+        # if not validate_phone(self.phone.data):
+        #     self.phone.errors.append('Invalid phone.')
+        #     return False
+        if not set(self.genres.data).issubset(dict(Genre.choices()).keys()):
+            self.genres.errors.append('Invalid genres.')
+            return False
+        if self.state.data not in dict(State.choices()).keys():
+            self.state.errors.append('Invalid state.')
+            return False
+        # if pass validation
+        return True
 

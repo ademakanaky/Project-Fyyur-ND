@@ -22,7 +22,7 @@ class Venue(db.Model):
     facebook_link = db.Column(db.String(120), nullable=False)
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
-    genres = db.Column(db.String(500), nullable=False)
+    genres = db.Column(db.ARRAY(db.String), nullable=False)
     website = db.Column(db.String,nullable=False)
     seeking_talent = db.Column(db.Boolean, default=False,nullable=False)
     seeking_description = db.Column(db.String(120), nullable=True)
@@ -48,8 +48,10 @@ class Venue(db.Model):
         return [
             {
                 'venue_id': show.venue.id,
+                'artist_id': show.artist.id,
                 'venue_name': show.venue.name,
                 'venue_image_link': show.venue.image_link,
+                'artist_image_link': show.artist.image_link,
                 'start_time': show.start_time.isoformat()
             } for show in past_shows]
 
@@ -60,8 +62,10 @@ class Venue(db.Model):
         return [
             {
                 'venue_id': show.venue.id,
+                'artist_id': show.artist.id,
                 'venue_name': show.venue.name,
                 'venue_image_link': show.venue.image_link,
+                'artist_image_link': show.artist.image_link,
                 'start_time': show.start_time.isoformat()
             } for show in upcoming_shows]
 
@@ -71,13 +75,13 @@ class Venue(db.Model):
 
     @property
     def upcoming_shows_count(self):
-        return len(self.past_shows)
+        return len(self.upcoming_shows)
     
     def format(self):
         return {
             'id': self.id,
             'name': self.name,
-            'genres': self.genres.split(', '),
+            'genres': self.genres,
             'city': self.city,
             'state': self.state,
             'phone': self.phone,
@@ -106,7 +110,7 @@ class Artist(db.Model):
     city = db.Column(db.String(120), nullable=False)
     state = db.Column(db.String(120), nullable=False)
     phone = db.Column(db.String(120), nullable=False)
-    genres = db.Column(db.String(120), nullable=False)
+    genres = genres = db.Column(db.ARRAY(db.String), nullable=False)
     image_link = db.Column(db.String(500), nullable=False)
     facebook_link = db.Column(db.String(120), nullable=False)
 
@@ -130,6 +134,41 @@ class Artist(db.Model):
         self.seeking_venue = seeking_venue
         self.seeking_description = seeking_description
 
+    @property
+    def past_shows(self):
+        past_shows = list(
+            filter(lambda show: show.start_time < datetime.now(), self.shows))
+        return [
+            {
+                'venue_id': show.venue.id,
+                'artist_id': show.artist.id,
+                'venue_name': show.venue.name,
+                'venue_image_link': show.venue.image_link,
+                'artist_image_link': show.artist.image_link,
+                'start_time': show.start_time.isoformat()
+            } for show in past_shows]
+
+    @property
+    def upcoming_shows(self):
+        upcoming_shows = list(
+            filter(lambda show: show.start_time > datetime.now(), self.shows))
+        return [
+            {
+                'venue_id': show.venue.id,
+                'artist_id': show.artist.id,
+                'venue_name': show.venue.name,
+                'venue_image_link': show.venue.image_link,
+                'artist_image_link': show.artist.image_link,
+                'start_time': show.start_time.isoformat()
+            } for show in upcoming_shows]
+
+    @property
+    def past_shows_count(self):
+        return len(self.past_shows)
+
+    @property
+    def upcoming_shows_count(self):
+        return len(self.upcoming_shows)
 # TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
 
 class Show(db.Model):
