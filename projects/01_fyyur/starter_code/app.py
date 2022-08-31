@@ -128,11 +128,37 @@ def search_venues():
 
 @app.route('/venues/<int:venue_id>')
 def show_venue(venue_id):
-  venue = Venue.query.filter_by(id=venue_id).first()
+  # venue = Venue.query.filter_by(id=venue_id).first()
+  # venue = Venue.query.filter_by(id=venue_id).join(Show, (Show.venue_id == Venue.id)).first()
+  venue = Venue.query.get_or_404(venue_id)
+  result = db.session.query(Show, Artist) \
+      .join(Artist, Artist.id == Show.artist_id) \
+      .filter(Show.venue_id == venue_id) \
+      .all()
 
-  if venue is None:
-    return abort(404)
+  past_shows = []
+  upcoming_shows = []
 
+  for show, artist in result:
+      temp_show = {
+          'artist_id': artist.id,
+          'artist_name': artist.name,
+          'artist_image_link': artist.image_link,
+          'start_time': show.start_time.strftime("%m/%d/%Y, %H:%M")
+      }
+      if show.start_time <= datetime.now():
+          past_shows.append(temp_show)
+      else:
+          upcoming_shows.append(temp_show)
+
+  data = vars(venue)
+
+  data['past_shows'] = past_shows
+  data['upcoming_shows'] = upcoming_shows
+  data['past_shows_count'] = len(past_shows)
+  data['upcoming_shows_count'] = len(upcoming_shows)
+
+  
   return render_template('pages/show_venue.html', venue=venue)
 
 #  Create Venue
@@ -242,12 +268,13 @@ def search_artists():
 def show_artist(artist_id):
   # shows the artist page with the given artist_id
   # TODO: replace with real artist data from the artist table, using artist_id
-  data = Artist.query.filter_by(id=artist_id).first()
+  # artist = Artist.query.filter_by(id=artist_id).first()
+  artist = Artist.query.filter_by(id=artist_id).join(Show, (Show.artist_id == Artist.id)).first()
 
-  if data is None:
+  if artist is None:
     return abort(404)
-
-  return render_template('pages/show_artist.html', artist=data)
+  else:
+    return render_template('pages/show_artist.html', artist=artist)
 
 #  Update
 #  ----------------------------------------------------------------
@@ -400,43 +427,6 @@ def create_artist_submission():
 def shows():
   # displays list of shows at /shows
   # TODO: replace with real venues data.
-  # data=[{
-  #   "venue_id": 1,
-  #   "venue_name": "The Musical Hop",
-  #   "artist_id": 4,
-  #   "artist_name": "Guns N Petals",
-  #   "artist_image_link": "https://images.unsplash.com/photo-1549213783-8284d0336c4f?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=300&q=80",
-  #   "start_time": "2019-05-21T21:30:00.000Z"
-  # }, {
-  #   "venue_id": 3,
-  #   "venue_name": "Park Square Live Music & Coffee",
-  #   "artist_id": 5,
-  #   "artist_name": "Matt Quevedo",
-  #   "artist_image_link": "https://images.unsplash.com/photo-1495223153807-b916f75de8c5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=334&q=80",
-  #   "start_time": "2019-06-15T23:00:00.000Z"
-  # }, {
-  #   "venue_id": 3,
-  #   "venue_name": "Park Square Live Music & Coffee",
-  #   "artist_id": 6,
-  #   "artist_name": "The Wild Sax Band",
-  #   "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
-  #   "start_time": "2035-04-01T20:00:00.000Z"
-  # }, {
-  #   "venue_id": 3,
-  #   "venue_name": "Park Square Live Music & Coffee",
-  #   "artist_id": 6,
-  #   "artist_name": "The Wild Sax Band",
-  #   "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
-  #   "start_time": "2035-04-08T20:00:00.000Z"
-  # }, {
-  #   "venue_id": 3,
-  #   "venue_name": "Park Square Live Music & Coffee",
-  #   "artist_id": 6,
-  #   "artist_name": "The Wild Sax Band",
-  #   "artist_image_link": "https://images.unsplash.com/photo-1558369981-f9ca78462e61?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=794&q=80",
-  #   "start_time": "2035-04-15T20:00:00.000Z"
-  # }]
-
   # displays list of shows at /shows
   query = Show.query.join(
     Venue, (Venue.id == Show.venue_id)
@@ -452,7 +442,7 @@ def shows():
       "artist_id": row.artist_id,
       "artist_name": row.artist_name,
       "artist_image_link": row.image_link,
-      "start_time": row.start_time
+      "start_time": row.start_time.strftime("%m/%d/%Y, %H:%M")
     })
 
   return render_template('pages/shows.html', shows=data)
